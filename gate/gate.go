@@ -98,12 +98,12 @@ func (a *agent) Run() {
 		}
 
 		if a.gate.Processor != nil {
-			msg, err := a.gate.Processor.Unmarshal(data)
+			msg, err, msgId := a.gate.Processor.Unmarshal(data)
 			if err != nil {
 				log.Debug("unmarshal message error: %v", err)
 				break
 			}
-			err = a.gate.Processor.Route(msg, a)
+			err = a.gate.Processor.Route(msgId, msg, a)
 			if err != nil {
 				log.Debug("route message error: %v", err)
 				break

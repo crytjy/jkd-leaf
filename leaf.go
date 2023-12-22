@@ -1,11 +1,11 @@
 package leaf
 
 import (
-	"github.com/name5566/leaf/cluster"
-	"github.com/name5566/leaf/conf"
-	"github.com/name5566/leaf/console"
-	"github.com/name5566/leaf/log"
-	"github.com/name5566/leaf/module"
+	"github.com/crytjy/jkd-leaf/cluster"
+	"github.com/crytjy/jkd-leaf/conf"
+	"github.com/crytjy/jkd-leaf/console"
+	"github.com/crytjy/jkd-leaf/log"
+	"github.com/crytjy/jkd-leaf/module"
 	"os"
 	"os/signal"
 )
