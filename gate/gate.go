@@ -30,6 +30,19 @@ type Gate struct {
 	LittleEndian bool
 }
 
+type UserData struct {
+	UserId  int64
+	GuildId int32
+	Req     interface{}
+	MsgId   uint16
+}
+
+type agent struct {
+	conn     network.Conn
+	gate     *Gate
+	userData UserData
+}
+
 func init() {
 	//初始化Protobuf协议映射表
 	protobuf.InitPbMsgId()
@@ -55,6 +68,24 @@ func (gate *Gate) Run(closeSig chan bool) {
 		}
 	}
 
+	var tcpServer *network.TCPServer
+	if gate.TCPAddr != "" {
+		tcpServer = new(network.TCPServer)
+		tcpServer.Addr = gate.TCPAddr
+		tcpServer.MaxConnNum = gate.MaxConnNum
+		tcpServer.PendingWriteNum = gate.PendingWriteNum
+		tcpServer.LenMsgLen = gate.LenMsgLen
+		tcpServer.MaxMsgLen = gate.MaxMsgLen
+		tcpServer.LittleEndian = gate.LittleEndian
+		tcpServer.NewAgent = func(conn *network.TCPConn) network.Agent {
+			a := &agent{conn: conn, gate: gate}
+			if gate.AgentChanRPC != nil {
+				gate.AgentChanRPC.Go("NewAgent", a)
+			}
+			return a
+		}
+	}
+
 	if wsServer != nil {
 		wsServer.Start()
 	}
@@ -66,19 +97,6 @@ func (gate *Gate) Run(closeSig chan bool) {
 }
 
 func (gate *Gate) OnDestroy() {}
-
-type UserData struct {
-	UserId  int64
-	GuildId int32
-	Req     interface{}
-	MsgId   uint16
-}
-
-type agent struct {
-	conn     network.Conn
-	gate     *Gate
-	userData UserData
-}
 
 func (a *agent) Run() {
 	for {
