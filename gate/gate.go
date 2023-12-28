@@ -4,6 +4,8 @@ import (
 	"github.com/crytjy/jkd-leaf/chanrpc"
 	"github.com/crytjy/jkd-leaf/log"
 	"github.com/crytjy/jkd-leaf/network"
+	"github.com/crytjy/jkd-leaf/network/protobuf"
+	"github.com/crytjy/jkd-leaf/util"
 	"net"
 	"reflect"
 	"time"
@@ -28,6 +30,11 @@ type Gate struct {
 	LittleEndian bool
 }
 
+func init() {
+	//初始化Protobuf协议映射表
+	protobuf.InitPbMsgId()
+}
+
 func (gate *Gate) Run(closeSig chan bool) {
 	var wsServer *network.WSServer
 	if gate.WSAddr != "" {
@@ -48,45 +55,29 @@ func (gate *Gate) Run(closeSig chan bool) {
 		}
 	}
 
-	var tcpServer *network.TCPServer
-	if gate.TCPAddr != "" {
-		tcpServer = new(network.TCPServer)
-		tcpServer.Addr = gate.TCPAddr
-		tcpServer.MaxConnNum = gate.MaxConnNum
-		tcpServer.PendingWriteNum = gate.PendingWriteNum
-		tcpServer.LenMsgLen = gate.LenMsgLen
-		tcpServer.MaxMsgLen = gate.MaxMsgLen
-		tcpServer.LittleEndian = gate.LittleEndian
-		tcpServer.NewAgent = func(conn *network.TCPConn) network.Agent {
-			a := &agent{conn: conn, gate: gate}
-			if gate.AgentChanRPC != nil {
-				gate.AgentChanRPC.Go("NewAgent", a)
-			}
-			return a
-		}
-	}
-
 	if wsServer != nil {
 		wsServer.Start()
 	}
-	if tcpServer != nil {
-		tcpServer.Start()
-	}
+
 	<-closeSig
 	if wsServer != nil {
 		wsServer.Close()
-	}
-	if tcpServer != nil {
-		tcpServer.Close()
 	}
 }
 
 func (gate *Gate) OnDestroy() {}
 
+type UserData struct {
+	UserId  int64
+	GuildId int32
+	Req     interface{}
+	MsgId   uint16
+}
+
 type agent struct {
 	conn     network.Conn
 	gate     *Gate
-	userData interface{}
+	userData UserData
 }
 
 func (a *agent) Run() {
@@ -103,6 +94,15 @@ func (a *agent) Run() {
 				log.Debug("unmarshal message error: %v", err)
 				break
 			}
+
+			// 储存用户请求数据
+			uData := a.UserData()
+			uData.Req = msg
+			uData.MsgId = msgId
+			a.SetUserData(uData)
+
+			network.SetRequestID(util.RandIdByPre(uint16(uData.UserId)))
+
 			err = a.gate.Processor.Route(msgId, msg, a)
 			if err != nil {
 				log.Debug("route message error: %v", err)
@@ -151,10 +151,10 @@ func (a *agent) Destroy() {
 	a.conn.Destroy()
 }
 
-func (a *agent) UserData() interface{} {
+func (a *agent) UserData() UserData {
 	return a.userData
 }
 
-func (a *agent) SetUserData(data interface{}) {
+func (a *agent) SetUserData(data UserData) {
 	a.userData = data
 }

@@ -2,6 +2,7 @@ package conf
 
 var (
 	LenStackBuf = 4096
+	SignKey     string
 
 	// log
 	LogLevel string

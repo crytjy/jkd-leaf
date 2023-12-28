@@ -3,6 +3,8 @@ package network
 import (
 	"crypto/tls"
 	"github.com/crytjy/jkd-leaf/log"
+	"github.com/crytjy/jkd-leaf/network"
+	"github.com/crytjy/jkd-leaf/network/auth"
 	"github.com/gorilla/websocket"
 	"net"
 	"net/http"
@@ -18,7 +20,7 @@ type WSServer struct {
 	HTTPTimeout     time.Duration
 	CertFile        string
 	KeyFile         string
-	NewAgent        func(*WSConn) Agent
+	NewAgent        func(*WSConn) network.Agent
 	ln              net.Listener
 	handler         *WSHandler
 }
@@ -27,7 +29,7 @@ type WSHandler struct {
 	maxConnNum      int
 	pendingWriteNum int
 	maxMsgLen       uint32
-	newAgent        func(*WSConn) Agent
+	newAgent        func(*WSConn) network.Agent
 	upgrader        websocket.Upgrader
 	conns           WebsocketConnSet
 	mutexConns      sync.Mutex
@@ -39,6 +41,18 @@ func (handler *WSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", 405)
 		return
 	}
+
+	if r.URL.Path != "/wss/fth.io" {
+		http.Error(w, "Method not found", 404)
+		return
+	}
+
+	query := r.URL.RawQuery
+	if !auth.CheckUser(query) {
+		http.Error(w, "Forbidden", 403)
+		return
+	}
+
 	conn, err := handler.upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Debug("upgrade error: %v", err)
