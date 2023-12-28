@@ -192,8 +192,3 @@ func (p *Processor) Range(f func(id uint16, t reflect.Type)) {
 		f(uint16(id), i.msgType)
 	}
 }
-
-func InitPbMsgId() {
-	c2s()
-	s2c()
-}

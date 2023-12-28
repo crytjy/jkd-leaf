@@ -10,7 +10,9 @@ import (
 	"os/signal"
 )
 
-func Run(mods ...module.Module) {
+func Run(preFunc, afterFunc func(), mods ...module.Module) {
+	preFunc()
+
 	// logger
 	if conf.LogLevel != "" {
 		logger, err := log.New(conf.LogLevel, conf.LogPath, conf.LogFlag)
@@ -43,4 +45,6 @@ func Run(mods ...module.Module) {
 	console.Destroy()
 	cluster.Destroy()
 	module.Destroy()
+
+	afterFunc()
 }
